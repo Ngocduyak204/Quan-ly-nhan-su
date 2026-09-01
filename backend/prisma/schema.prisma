@@ -1,0 +1,136 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  WORKER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ShiftStatus {
+  WORKING
+  COMPLETED
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id                 String     @id @default(uuid())
+  username           String     @unique
+  passwordHash       String
+  fullName           String
+  phone              String?
+  address            String?
+  role               Role       @default(WORKER)
+  status             UserStatus @default(ACTIVE)
+  hashedRefreshToken String?
+  lastLogoutAt       DateTime?
+
+  workShifts        WorkShift[]
+  wageRates         WageRate[]
+  shiftAuditLogs    ShiftAuditLog[]
+  lockedWagePeriods WagePeriod[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WageRate {
+  id            String    @id @default(uuid())
+  pricePerKg    Float
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id])
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  createdBy     String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WorkShift {
+  id                  String      @id @default(uuid())
+  userId              String
+  user                User        @relation(fields: [userId], references: [id])
+  checkinTime         DateTime
+  checkinLat          Float
+  checkinLng          Float
+  checkinAccuracy     Float
+  checkinPhotoUrl     String
+  checkoutTime        DateTime?
+  checkoutLat         Float?
+  checkoutLng         Float?
+  checkoutAccuracy    Float?
+  checkoutPhotoUrl    String?
+  outputVolumeKg      Float?
+  volumeProofPhotoUrl String?
+  appliedWageRate     Float?
+  calculatedWage      Float?
+  distanceMeters      Float?
+  status              ShiftStatus @default(WORKING)
+  isAnomaly           Boolean     @default(false)
+  anomalyReasons      String[]    @default([])
+
+  wagePeriodId String?
+  wagePeriod   WagePeriod? @relation(fields: [wagePeriodId], references: [id])
+
+  shiftAuditLogs ShiftAuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ShiftAuditLog {
+  id        String       @id @default(uuid())
+  shiftId   String
+  shift     WorkShift    @relation(fields: [shiftId], references: [id])
+  changedBy String
+  user      User         @relation(fields: [changedBy], references: [id])
+  action    String
+  oldVolume Float?
+  newVolume Float?
+  oldStatus ShiftStatus?
+  newStatus ShiftStatus?
+  reason    String
+  createdAt DateTime     @default(now())
+}
+
+model WagePeriod {
+  id        String      @id @default(uuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  isLocked  Boolean     @default(false)
+  lockedAt  DateTime?
+  lockedBy  String?
+  locker    User?       @relation(fields: [lockedBy], references: [id])
+  workShifts WorkShift[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DeviceLog {
+  id                String   @id @default(uuid())
+  userId            String
+  shiftId           String?
+  ipAddress         String?
+  userAgent         String?
+  deviceFingerprint String?
+  action            String
+  createdAt         DateTime @default(now())
+}
