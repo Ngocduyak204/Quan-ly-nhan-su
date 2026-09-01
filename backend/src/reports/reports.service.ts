@@ -8,7 +8,7 @@ export class ReportsService {
 
   async getSummary(startDate?: string, endDate?: string) {
     const where: any = {
-      status: ShiftStatus.COMPLETED,
+      status: { in: [ShiftStatus.COMPLETED, ShiftStatus.APPROVED] },
     };
 
     if (startDate || endDate) {

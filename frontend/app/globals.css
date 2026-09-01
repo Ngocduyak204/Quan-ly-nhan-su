@@ -1,92 +1,117 @@
 @import "tailwindcss";
 
-@layer base {
-  :root {
-    --bg-dark: #090d16;
-    --card-bg: rgba(17, 24, 39, 0.8);
-    --border-color: rgba(255, 255, 255, 0.08);
-    --accent-blue: #3b82f6;
-    --accent-purple: #8b5cf6;
-    --accent-green: #10b981;
-    --accent-amber: #f59e0b;
-    --accent-red: #ef4444;
-  }
+:root {
+  /* ========================================================= */
+  /* 🎨 HỆ THỐNG BIẾN CẤU HÌNH GIAO DIỆN CHUNG (FRONTEND GLOBAL) */
+  /* ========================================================= */
 
-  body {
-    background-color: var(--bg-dark);
-    color: #f3f4f6;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-    min-height: 100vh;
-  }
+  /* 1. 🔤 KÍCH THƯỚC CHỮ (FONT SIZES) */
+  --font-base: 16px;       /* Cỡ chữ mặc định toàn hệ thống */
+  --font-sm: 14px;         /* Cỡ chữ vừa / nội dung bảng */
+  --font-xs: 13px;         /* Cỡ chữ nhỏ / ghi chú / nhãn */
+  --font-lg: 18px;         /* Cỡ chữ tiêu đề nhỏ */
+  --font-xl: 24px;         /* Cỡ chữ tiêu đề lớn */
+
+  /* 2. 🏋️ ĐỘ ĐẬM DÀY CỦA CHỮ (FONT WEIGHTS) - Sửa tại đây để chỉnh độ dày/mỏng của chữ */
+  --fw-normal: 400;        /* Chữ mỏng thường */
+  --fw-medium: 500;        /* Chữ hơi đậm */
+  --fw-semibold: 600;      /* Chữ đậm vừa */
+  --fw-bold: 700;          /* Chữ rất đậm */
+  --fw-black: 900;         /* Chữ siêu đậm nổi bật */
+
+  /* 3. 📝 MÀU CHỮ & ĐỘ ĐẬM NHẠT (TYPOGRAPHY COLORS) */
+  --text-main: #0f172a;    /* Chữ đen than đậm nét nhất */
+  --text-muted: #334155;   /* Chữ phụ / nhãn (rõ ràng, không bị mờ) */
+  --text-light: #64748b;   /* Chữ ghi chú nhạt */
+
+  /* 4. 🎨 NỀN & VIỀN (LIGHT THEME) */
+  --bg-main: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-subtle: #f1f5f9;
+  --border-main: #e2e8f0;
+  --border-strong: #cbd5e1;
+
+  /* 5. 👑 MÀU CHỦ ĐẠO (PRIMARY ACCENT) */
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-light: #eef2ff;
+
+  /* 6. 🚥 MÀU TRẠNG THÁI (FUNCTIONAL STATUS) */
+  --success: #16a34a;
+  --success-bg: #f0fdf4;
+  --success-border: #bbf7d0;
+
+  --warning: #d97706;
+  --warning-bg: #fffbeb;
+  --warning-border: #fde68a;
+
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
 }
 
-.glass-card {
-  background: var(--card-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-color);
+/* Áp dụng cấu hình mặc định cho Body toàn hệ thống */
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-size: var(--font-base);
+  font-weight: var(--fw-normal);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Các Class Dùng Chung Toàn Frontend */
+.glass-card, .app-card {
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-main) !important;
   border-radius: 1rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease-in-out;
 }
 
-.gradient-button {
-  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-  color: white;
-  font-weight: 600;
+.glass-card:hover, .app-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.gradient-button, .btn-primary {
+  background-color: var(--primary) !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: var(--fw-bold);
   border-radius: 0.75rem;
   transition: all 0.2s ease-in-out;
 }
 
-.gradient-button:hover {
-  opacity: 0.92;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
+.gradient-button:hover, .btn-primary:hover {
+  background-color: var(--primary-hover) !important;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
 }
 
-.gradient-button:active {
-  transform: translateY(0);
+.badge-emerald, .badge-green, .badge-success {
+  background-color: var(--success-bg) !important;
+  color: var(--success) !important;
+  border: 1px solid var(--success-border) !important;
+  font-weight: var(--fw-bold);
 }
 
-.gradient-text {
-  background: linear-gradient(135deg, #60a5fa 0%, #c084fc 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.badge-amber, .badge-warning {
+  background-color: var(--warning-bg) !important;
+  color: var(--warning) !important;
+  border: 1px solid var(--warning-border) !important;
+  font-weight: var(--fw-bold);
 }
 
-.badge-green {
-  background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+.badge-red, .badge-danger {
+  background-color: var(--danger-bg) !important;
+  color: var(--danger) !important;
+  border: 1px solid var(--danger-border) !important;
+  font-weight: var(--fw-bold);
 }
 
-.badge-amber {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.3);
-}
-
-.badge-red {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-/* Micro-animations */
-@keyframes pulse-ring {
-  0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-  }
-  70% {
-    transform: scale(1);
-    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
-  }
-  100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-  }
-}
-
-.live-indicator {
-  animation: pulse-ring 2s infinite;
+.badge-purple {
+  background-color: var(--primary-light) !important;
+  color: var(--primary) !important;
+  border: 1px solid #c7d2fe !important;
+  font-weight: var(--fw-bold);
 }

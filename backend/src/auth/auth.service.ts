@@ -2,13 +2,14 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import { LoginSchema, RegisterSchema } from './auth.schema';
+import { ChangePasswordSchema, ForgotPasswordSchema, LoginSchema, RegisterSchema, UpdateProfileSchema } from './auth.schema';
 
 @Injectable()
 export class AuthService {
@@ -109,6 +110,77 @@ export class AuthService {
     await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
 
     return tokens;
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordSchema) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Không tìm thấy người dùng');
+    }
+
+    const passwordMatches = await bcrypt.compare(dto.oldPassword, user.passwordHash);
+    if (!passwordMatches) {
+      throw new BadRequestException('Mật khẩu hiện tại không chính xác');
+    }
+
+    const newPasswordHash = await bcrypt.hash(dto.newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash: newPasswordHash,
+        hashedRefreshToken: null,
+        lastLogoutAt: new Date(),
+      },
+    });
+
+    return { message: 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại.' };
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileSchema) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Không tìm thấy người dùng');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: dto,
+      select: {
+        id: true,
+        username: true,
+        fullName: true,
+        phone: true,
+        address: true,
+        role: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return updatedUser;
+  }
+
+  async forgotPassword(dto: ForgotPasswordSchema) {
+    const user = await this.prisma.user.findUnique({
+      where: { username: dto.username },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Tên đăng nhập không tồn tại trên hệ thống');
+    }
+
+    return {
+      message: 'Yêu cầu của bạn đã được gửi. Vui lòng liên hệ Quản trị viên (Admin) để xác minh và nhận lại mật khẩu mới.',
+      supportContact: '0901234567',
+    };
   }
 
   async updateRefreshTokenHash(userId: string, refreshToken: string) {

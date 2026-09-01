@@ -5,4 +5,6 @@ export const AUTH_ROUTER = {
   REFRESH: 'refresh',
   LOGOUT: 'logout',
   PROFILE: 'profile',
+  CHANGE_PASSWORD: 'change-password',
+  FORGOT_PASSWORD: 'forgot-password',
 } as const;

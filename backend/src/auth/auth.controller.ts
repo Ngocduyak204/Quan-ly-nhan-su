@@ -4,18 +4,19 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { GetUser } from './decorators/get-user.decorator';
-import { LoginSchema, RegisterSchema } from './auth.schema';
+import { ChangePasswordSchema, ForgotPasswordSchema, LoginSchema, RegisterSchema, UpdateProfileSchema } from './auth.schema';
 import { JwtAccessGuard } from './guards/jwt-access.guard';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { AUTH_ROUTER } from './auth.router';
 
-@ApiTags('Auth - Xác thực người dùng')
+@ApiTags('Auth - Xác thực & Hồ sơ người dùng')
 @Controller(AUTH_ROUTER.BASE)
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -43,7 +44,7 @@ export class AuthController {
     return this.authService.refreshToken(userId, refreshToken);
   }
 
-  @ApiOperation({ summary: 'Đăng xuất tài khoản' })
+  @ApiOperation({ summary: 'Đăng xuất tài khoản (Thu hồi toàn bộ Token)' })
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAccessGuard)
   @Post(AUTH_ROUTER.LOGOUT)
@@ -52,12 +53,37 @@ export class AuthController {
     return this.authService.logout(userId);
   }
 
-  @ApiOperation({ summary: 'Lấy thông tin tài khoản đang đăng nhập' })
+  @ApiOperation({ summary: 'Lấy thông tin profile tài khoản đang đăng nhập' })
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAccessGuard)
   @Get(AUTH_ROUTER.PROFILE)
   @HttpCode(HttpStatus.OK)
   getProfile(@GetUser() user: any) {
     return user;
+  }
+
+  @ApiOperation({ summary: 'Cập nhật thông tin trang cá nhân (Họ tên, SĐT, Địa chỉ)' })
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAccessGuard)
+  @Patch(AUTH_ROUTER.PROFILE)
+  @HttpCode(HttpStatus.OK)
+  updateProfile(@GetUser('id') userId: string, @Body() dto: UpdateProfileSchema) {
+    return this.authService.updateProfile(userId, dto);
+  }
+
+  @ApiOperation({ summary: 'Thay đổi mật khẩu tài khoản cá nhân' })
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAccessGuard)
+  @Post(AUTH_ROUTER.CHANGE_PASSWORD)
+  @HttpCode(HttpStatus.OK)
+  changePassword(@GetUser('id') userId: string, @Body() dto: ChangePasswordSchema) {
+    return this.authService.changePassword(userId, dto);
+  }
+
+  @ApiOperation({ summary: 'Yêu cầu quên mật khẩu' })
+  @Post(AUTH_ROUTER.FORGOT_PASSWORD)
+  @HttpCode(HttpStatus.OK)
+  forgotPassword(@Body() dto: ForgotPasswordSchema) {
+    return this.authService.forgotPassword(dto);
   }
 }
