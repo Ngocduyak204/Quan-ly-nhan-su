@@ -28,32 +28,41 @@ export async function apiFetch<T = any>(
 
   let response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
+    credentials: 'include',
     headers,
   });
 
   // Nếu gặp lỗi 401 Unauthorized và có Refresh Token -> Tự động gọi Refresh Token
   if (response.status === 401 && typeof window !== 'undefined') {
     const refreshToken = localStorage.getItem('refresh_token');
-    if (refreshToken && endpoint !== '/auth/refresh' && endpoint !== '/auth/login') {
+    if (endpoint !== '/auth/refresh' && endpoint !== '/auth/login') {
       try {
+        const refreshHeaders: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        if (refreshToken) {
+          refreshHeaders['Authorization'] = `Bearer ${refreshToken}`;
+        }
+
         const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${refreshToken}`,
-          },
-          body: JSON.stringify({ refreshToken }),
+          credentials: 'include',
+          headers: refreshHeaders,
+          body: JSON.stringify(refreshToken ? { refreshToken } : {}),
         });
 
         if (refreshRes.ok) {
           const newTokens = await refreshRes.json();
           localStorage.setItem('access_token', newTokens.accessToken);
-          localStorage.setItem('refresh_token', newTokens.refreshToken);
+          if (newTokens.refreshToken) {
+            localStorage.setItem('refresh_token', newTokens.refreshToken);
+          }
 
           // Thử lại request ban đầu với Access Token mới
           headers['Authorization'] = `Bearer ${newTokens.accessToken}`;
           response = await fetch(`${API_BASE_URL}${endpoint}`, {
             ...options,
+            credentials: 'include',
             headers,
           });
         } else {

@@ -49,7 +49,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     localStorage.setItem('access_token', res.tokens.accessToken);
-    localStorage.setItem('refresh_token', res.tokens.refreshToken);
+    if (res.tokens.refreshToken) {
+      localStorage.setItem('refresh_token', res.tokens.refreshToken);
+    }
     localStorage.setItem('user_info', JSON.stringify(res.user));
     setUser(res.user);
 

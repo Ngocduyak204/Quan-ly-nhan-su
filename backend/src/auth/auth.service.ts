@@ -94,7 +94,7 @@ export class AuthService {
     });
 
     if (!user || !user.hashedRefreshToken || user.status !== 'ACTIVE') {
-      throw new ForbiddenException('Truy cập bị từ chối');
+      throw new ForbiddenException('Truy cập bị từ chối hoặc phiên đăng nhập đã hết hạn');
     }
 
     const refreshTokenMatches = await bcrypt.compare(
@@ -103,7 +103,15 @@ export class AuthService {
     );
 
     if (!refreshTokenMatches) {
-      throw new ForbiddenException('Refresh Token không chính xác hoặc đã bị thu hồi');
+      // Automatic Reuse Detection: Phát hiện Refresh Token cũ bị dùng lại (Nghi vấn trộm token)
+      // Tự động thu hồi toàn bộ Token của User này
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { hashedRefreshToken: null },
+      });
+      throw new ForbiddenException(
+        'Cảnh báo bảo mật: Refresh Token không hợp lệ hoặc đã bị dùng lại. Toàn bộ phiên đăng nhập đã bị hủy vì lý do an toàn.',
+      );
     }
 
     const tokens = await this.getTokens(user.id, user.username, user.role);

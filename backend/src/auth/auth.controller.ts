@@ -7,10 +7,12 @@ import {
   Param,
   Patch,
   Post,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
+import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { GetUser } from './decorators/get-user.decorator';
 import { Roles } from './decorators/roles.decorator';
@@ -20,6 +22,14 @@ import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { AUTH_ROUTER } from './auth.router';
 
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
+};
+
 @ApiTags('Auth - Xác thực & Hồ sơ người dùng')
 @Controller(AUTH_ROUTER.BASE)
 export class AuthController {
@@ -28,15 +38,25 @@ export class AuthController {
   @ApiOperation({ summary: 'Đăng ký tài khoản mới' })
   @Post(AUTH_ROUTER.REGISTER)
   @HttpCode(HttpStatus.CREATED)
-  register(@Body() dto: RegisterSchema) {
-    return this.authService.register(dto);
+  async register(
+    @Body() dto: RegisterSchema,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.register(dto);
+    res.cookie('refresh_token', result.tokens.refreshToken, COOKIE_OPTIONS);
+    return result;
   }
 
   @ApiOperation({ summary: 'Đăng nhập tài khoản' })
   @Post(AUTH_ROUTER.LOGIN)
   @HttpCode(HttpStatus.OK)
-  login(@Body() dto: LoginSchema) {
-    return this.authService.login(dto);
+  async login(
+    @Body() dto: LoginSchema,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.login(dto);
+    res.cookie('refresh_token', result.tokens.refreshToken, COOKIE_OPTIONS);
+    return result;
   }
 
   @ApiOperation({ summary: 'Cấp lại Access Token mới từ Refresh Token' })
@@ -44,8 +64,14 @@ export class AuthController {
   @UseGuards(JwtRefreshGuard)
   @Post(AUTH_ROUTER.REFRESH)
   @HttpCode(HttpStatus.OK)
-  refreshToken(@GetUser('userId') userId: string, @GetUser('refreshToken') refreshToken: string) {
-    return this.authService.refreshToken(userId, refreshToken);
+  async refreshToken(
+    @GetUser('userId') userId: string,
+    @GetUser('refreshToken') refreshToken: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const tokens = await this.authService.refreshToken(userId, refreshToken);
+    res.cookie('refresh_token', tokens.refreshToken, COOKIE_OPTIONS);
+    return tokens;
   }
 
   @ApiOperation({ summary: 'Đăng xuất tài khoản (Thu hồi toàn bộ Token)' })
@@ -53,7 +79,11 @@ export class AuthController {
   @UseGuards(JwtAccessGuard)
   @Post(AUTH_ROUTER.LOGOUT)
   @HttpCode(HttpStatus.OK)
-  logout(@GetUser('id') userId: string) {
+  async logout(
+    @GetUser('id') userId: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    res.clearCookie('refresh_token', { path: '/' });
     return this.authService.logout(userId);
   }
 
