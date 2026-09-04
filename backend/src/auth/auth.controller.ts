@@ -4,16 +4,20 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Role } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { GetUser } from './decorators/get-user.decorator';
+import { Roles } from './decorators/roles.decorator';
 import { ChangePasswordSchema, ForgotPasswordSchema, LoginSchema, RegisterSchema, UpdateProfileSchema } from './auth.schema';
 import { JwtAccessGuard } from './guards/jwt-access.guard';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
+import { RolesGuard } from './guards/roles.guard';
 import { AUTH_ROUTER } from './auth.router';
 
 @ApiTags('Auth - Xác thực & Hồ sơ người dùng')
@@ -85,5 +89,29 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   forgotPassword(@Body() dto: ForgotPasswordSchema) {
     return this.authService.forgotPassword(dto);
+  }
+
+  @ApiOperation({ summary: 'Xem danh sách yêu cầu đặt lại mật khẩu (Admin)' })
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAccessGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Get('reset-requests')
+  @HttpCode(HttpStatus.OK)
+  getPasswordResetRequests() {
+    return this.authService.getPasswordResetRequests();
+  }
+
+  @ApiOperation({ summary: 'Xử lý đặt lại mật khẩu cho yêu cầu quên mật khẩu (Admin)' })
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAccessGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Post('reset-requests/:id/resolve')
+  @HttpCode(HttpStatus.OK)
+  resolvePasswordResetRequest(
+    @Param('id') requestId: string,
+    @GetUser('id') adminUserId: string,
+    @Body('newPassword') newPassword: string,
+  ) {
+    return this.authService.resolvePasswordResetRequest(requestId, adminUserId, newPassword);
   }
 }

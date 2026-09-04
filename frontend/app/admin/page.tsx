@@ -13,6 +13,7 @@ export default function AdminDashboardPage() {
     anomaliesCount: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [refreshSuccess, setRefreshSuccess] = useState(false);
 
   useEffect(() => {
     fetchDashboardStats();
@@ -21,6 +22,8 @@ export default function AdminDashboardPage() {
   const fetchDashboardStats = async () => {
     try {
       setLoading(true);
+      setRefreshSuccess(false);
+
       const [users, shifts, summary] = await Promise.all([
         apiFetch<any[]>('/users'),
         apiFetch<any[]>('/shifts/admin/all'),
@@ -37,6 +40,9 @@ export default function AdminDashboardPage() {
         totalWageVnd: summary.summary?.totalWage || 0,
         anomaliesCount: anomalyCount,
       });
+
+      setRefreshSuccess(true);
+      setTimeout(() => setRefreshSuccess(false), 3000);
     } catch (err) {
       console.error('Lỗi tải dữ liệu Dashboard Admin:', err);
     } finally {
@@ -45,24 +51,32 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       {/* Top Title Banner */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900">Tổng Quan Hệ Thống</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-2xl font-black text-slate-900">Tổng Quan Hệ Thống</h1>
+          <p className="text-sm text-slate-500 mt-1 font-medium">
             Theo dõi thời gian thực nhân công, sản lượng kg và tiền công
           </p>
         </div>
-        <button
-          onClick={fetchDashboardStats}
-          className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5"
-        >
-          <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Làm mới dữ liệu
-        </button>
+        <div className="flex items-center gap-3">
+          {refreshSuccess && (
+            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 animate-fade-in">
+              ✓ Đã làm mới dữ liệu mới nhất
+            </span>
+          )}
+          <button
+            onClick={fetchDashboardStats}
+            disabled={loading}
+            className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-2 disabled:opacity-60"
+          >
+            <svg className={`w-4 h-4 text-indigo-600 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {loading ? 'Đang làm mới...' : 'Làm mới dữ liệu'}
+          </button>
+        </div>
       </div>
 
       {/* Metric Cards Grid - Light Theme */}
@@ -175,7 +189,7 @@ export default function AdminDashboardPage() {
         <Link href="/admin/shifts" className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-400 hover:shadow-md transition-all group">
           <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 01-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
           </div>
           <h4 className="font-bold text-slate-900 text-base group-hover:text-indigo-600 transition-colors">

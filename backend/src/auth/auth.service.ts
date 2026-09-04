@@ -25,7 +25,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new BadRequestException('Tên đăng nhập đã tồn tại');
+      throw new BadRequestException('Tên đăng nhập đã tồn tại trên hệ thống');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
@@ -177,10 +177,68 @@ export class AuthService {
       throw new NotFoundException('Tên đăng nhập không tồn tại trên hệ thống');
     }
 
+    // Cơ sở xác minh: Kiểm tra số điện thoại nếu tài khoản có thông tin SĐT
+    if (dto.phone && user.phone && user.phone.trim() !== dto.phone.trim()) {
+      throw new BadRequestException('Số điện thoại xác minh không khớp với thông tin tài khoản');
+    }
+
+    // Tạo bản ghi Yêu cầu đặt lại mật khẩu gửi đến Admin
+    await this.prisma.passwordResetRequest.create({
+      data: {
+        userId: user.id,
+        phone: dto.phone || user.phone || null,
+        status: 'PENDING',
+        note: 'Người dùng yêu cầu đặt lại mật khẩu',
+      },
+    });
+
     return {
-      message: 'Yêu cầu của bạn đã được gửi. Vui lòng liên hệ Quản trị viên (Admin) để xác minh và nhận lại mật khẩu mới.',
+      message: 'Yêu cầu đặt lại mật khẩu đã được gửi đến Quản trị viên (Admin). Vui lòng chờ Admin xác nhận.',
       supportContact: '0901234567',
     };
+  }
+
+  async getPasswordResetRequests() {
+    return this.prisma.passwordResetRequest.findMany({
+      include: {
+        user: { select: { id: true, username: true, fullName: true, phone: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async resolvePasswordResetRequest(requestId: string, adminUserId: string, newPassword: string) {
+    const request = await this.prisma.passwordResetRequest.findUnique({
+      where: { id: requestId },
+      include: { user: true },
+    });
+
+    if (!request) {
+      throw new NotFoundException('Không tìm thấy yêu cầu đặt lại mật khẩu');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    // Cập nhật mật khẩu mới cho user
+    await this.prisma.user.update({
+      where: { id: request.userId },
+      data: {
+        passwordHash,
+        hashedRefreshToken: null,
+        lastLogoutAt: new Date(),
+      },
+    });
+
+    // Đánh dấu yêu cầu là RESOLVED
+    const updatedRequest = await this.prisma.passwordResetRequest.update({
+      where: { id: requestId },
+      data: {
+        status: 'RESOLVED',
+        note: `Admin ID ${adminUserId} đã reset mật khẩu thành công`,
+      },
+    });
+
+    return updatedRequest;
   }
 
   async updateRefreshTokenHash(userId: string, refreshToken: string) {
@@ -201,7 +259,7 @@ export class AuthService {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(jwtPayload, {
         secret: this.config.get<string>('JWT_ACCESS_SECRET') || 'super-secret-access-token-key-qlnv-sl-2026',
-        expiresIn: (this.config.get<string>('JWT_ACCESS_EXPIRATION') || '1d') as any,
+        expiresIn: (this.config.get<string>('JWT_ACCESS_EXPIRATION') || '5m') as any,
       }),
       this.jwtService.signAsync(jwtPayload, {
         secret: this.config.get<string>('JWT_REFRESH_SECRET') || 'super-secret-refresh-token-key-qlnv-sl-2026',

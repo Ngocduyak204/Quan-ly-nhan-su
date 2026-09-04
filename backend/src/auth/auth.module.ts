@@ -21,7 +21,7 @@ import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_ACCESS_SECRET') || 'super-secret-access-token-key-qlnv-sl-2026',
         signOptions: {
-          expiresIn: (configService.get<string>('JWT_ACCESS_EXPIRATION') || '1d') as any,
+          expiresIn: (configService.get<string>('JWT_ACCESS_EXPIRATION') || '5m') as any,
         },
       }),
       inject: [ConfigService],

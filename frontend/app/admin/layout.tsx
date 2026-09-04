@@ -1,20 +1,49 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { apiFetch } from '@/lib/api';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, logout, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
+  const [pendingResetCount, setPendingResetCount] = useState(0);
+  const [pendingAnomalyCount, setPendingAnomalyCount] = useState(0);
+
   useEffect(() => {
     if (!loading && (!user || user.role !== 'ADMIN')) {
       router.push('/login');
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    if (!user || user.role !== 'ADMIN') return;
+
+    const fetchCounts = async () => {
+      try {
+        const [resets, anomalies] = await Promise.all([
+          apiFetch<any[]>('/auth/reset-requests').catch(() => []),
+          apiFetch<any[]>('/shifts/admin/all?isAnomaly=true').catch(() => []),
+        ]);
+
+        const pendingResets = Array.isArray(resets) ? resets.filter((r) => r.status === 'PENDING').length : 0;
+        const pendingAnomalies = Array.isArray(anomalies) ? anomalies.filter((a) => a.status === 'PENDING_REVIEW').length : 0;
+
+        setPendingResetCount(pendingResets);
+        setPendingAnomalyCount(pendingAnomalies);
+      } catch (err) {
+        // Silently catch fetch errors
+      }
+    };
+
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 10000); // refresh count every 10s
+    return () => clearInterval(interval);
+  }, [user, pathname]);
 
   if (loading || !user || user.role !== 'ADMIN') {
     return (
@@ -35,14 +64,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: 'Hồ sơ & Đổi mật khẩu', href: '/profile', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
   ];
 
+  const formatBadgeCount = (count: number) => {
+    return count > 10 ? '10+' : count;
+  };
+
+  const totalPending = pendingResetCount + pendingAnomalyCount;
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex font-sans">
       {/* Sidebar Light Theme */}
       <aside className="w-64 bg-white border-r border-slate-200 p-4 flex flex-col justify-between hidden md:flex shrink-0 shadow-sm">
         <div>
           <div className="flex items-center gap-3 px-2 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-bold text-lg text-white shadow-md shadow-indigo-500/20">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-bold text-lg text-white shadow-md shadow-indigo-500/20 relative">
               Q
+              {totalPending > 0 && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-ping" />
+              )}
             </div>
             <div>
               <h1 className="font-extrabold text-base tracking-wide text-slate-900">QLNV-SL Admin</h1>
@@ -53,20 +91,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <nav className="space-y-1">
             {navItems.map((item) => {
               const active = pathname === item.href;
+              const badgeCount = item.href === '/admin/users' ? pendingResetCount : item.href === '/admin/anomalies' ? pendingAnomalyCount : 0;
+
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                  className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
                     active
                       ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
-                  <svg className={`w-5 h-5 ${active ? 'text-indigo-600' : 'text-slate-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
-                  </svg>
-                  <span>{item.label}</span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <svg className={`w-5 h-5 shrink-0 ${active ? 'text-indigo-600' : 'text-slate-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
+                    </svg>
+                    <span className="truncate">{item.label}</span>
+                  </div>
+
+                  {badgeCount > 0 && (
+                    <span
+                      className={`ml-2 shrink-0 px-2 py-0.5 rounded-full text-xs font-black animate-pulse shadow-sm ${
+                        item.href === '/admin/users' ? 'bg-amber-500 text-white' : 'bg-rose-500 text-white'
+                      }`}
+                    >
+                      {formatBadgeCount(badgeCount)}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -100,8 +152,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile Header Navigation */}
         <header className="p-4 bg-white border-b border-slate-200 flex items-center justify-between md:hidden shadow-sm">
-          <Link href="/profile" className="font-bold text-sm text-indigo-700">
-            QLNV-SL Admin ({user.fullName})
+          <Link href="/profile" className="font-bold text-sm text-indigo-700 flex items-center gap-2">
+            <span>QLNV-SL Admin ({user.fullName})</span>
+            {totalPending > 0 && (
+              <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
+                {formatBadgeCount(totalPending)} sự kiện mới
+              </span>
+            )}
           </Link>
           <button onClick={logout} className="text-xs text-red-600 font-semibold">Đăng xuất</button>
         </header>

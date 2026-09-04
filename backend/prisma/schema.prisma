@@ -28,6 +28,12 @@ enum ShiftStatus {
   REJECTED
 }
 
+enum ResetRequestStatus {
+  PENDING
+  RESOLVED
+  REJECTED
+}
+
 model User {
   id                 String     @id @default(uuid())
   username           String     @unique
@@ -40,10 +46,23 @@ model User {
   hashedRefreshToken String?
   lastLogoutAt       DateTime?
 
-  workShifts        WorkShift[]
-  wageRates         WageRate[]
-  shiftAuditLogs    ShiftAuditLog[]
-  lockedWagePeriods WagePeriod[]
+  workShifts            WorkShift[]
+  wageRates             WageRate[]
+  shiftAuditLogs        ShiftAuditLog[]
+  lockedWagePeriods     WagePeriod[]
+  passwordResetRequests PasswordResetRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PasswordResetRequest {
+  id        String             @id @default(uuid())
+  userId    String
+  user      User               @relation(fields: [userId], references: [id])
+  phone     String?
+  status    ResetRequestStatus @default(PENDING)
+  note      String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -110,14 +129,14 @@ model ShiftAuditLog {
 }
 
 model WagePeriod {
-  id        String      @id @default(uuid())
-  name      String
-  startDate DateTime
-  endDate   DateTime
-  isLocked  Boolean     @default(false)
-  lockedAt  DateTime?
-  lockedBy  String?
-  locker    User?       @relation(fields: [lockedBy], references: [id])
+  id         String      @id @default(uuid())
+  name       String
+  startDate  DateTime
+  endDate    DateTime
+  isLocked   Boolean     @default(false)
+  lockedAt   DateTime?
+  lockedBy   String?
+  locker     User?       @relation(fields: [lockedBy], references: [id])
   workShifts WorkShift[]
 
   createdAt DateTime @default(now())
